@@ -59,5 +59,6 @@ func (w *Watcher) OnCarAvailable(query communautowatcher.CarQuery, cars []commun
 }
 
 func (w *Watcher) OnFlexCarAvailable(cars []communautowatcher.FlexCarAvailabilityResp) {
+	fmt.Printf("car No: %d CarModel: %s", cars[0].CarNo, cars[0].CarModel)
 	// todo
 }
