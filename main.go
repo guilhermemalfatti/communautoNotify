@@ -3,23 +3,25 @@ package main
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/guilhermemalfatti/communautowatcher"
+	"github.com/umahmood/haversine"
 	"golang.org/x/sync/errgroup"
 )
 
-func main() {
+func maink() {
 	group, groupCtx := errgroup.WithContext(context.Background())
 
 	group.Go(func() error {
-		err := communautowatcher.StartWatcher(groupCtx, communautowatcher.WatcherOptions{
-			Interval:        time.Minute * 5,
-			Watcher:         &Watcher{},
-			IsFetchStations: false,
-			IsFetchFlexCars: true,
+		communautowatcher.StartWatcher(groupCtx, communautowatcher.WatcherOptions{
+			Interval:              time.Minute * 5,
+			Watcher:               &Watcher{},
+			IsEnableFetchStations: false,
+			IsEnableFetchFlexCars: true,
 		})
-		return err
+		return fmt.Errorf("Watcher was interrupted.")
 	})
 
 	if err := group.Wait(); err != nil {
@@ -58,7 +60,28 @@ func (w *Watcher) OnCarAvailable(query communautowatcher.CarQuery, cars []commun
 	// todo
 }
 
-func (w *Watcher) OnFlexCarAvailable(cars []communautowatcher.FlexCarAvailabilityResp) {
-	fmt.Printf("car No: %d CarModel: %s", cars[0].CarNo, cars[0].CarModel)
-	// todo
+func (w *Watcher) OnFlexCarAvailable(cars []communautowatcher.Car) {
+	mtlHomeCoord := haversine.Coord{Lat: 45.540615, Lon: -73.636537}
+
+	filteredcars := []communautowatcher.Car{}
+	for _, car := range cars {
+		carCoord := haversine.Coord{Lat: car.Latitude, Lon: car.Longitude}
+
+		_, km := haversine.Distance(mtlHomeCoord, carCoord)
+
+		// filter cars less then 1 km of distance
+		if km < 1.0 {
+			car.Distance = km
+			filteredcars = append(filteredcars, car)
+		}
+	}
+
+	// order by distance
+	sort.SliceStable(filteredcars, func(i, j int) bool {
+		return filteredcars[i].Distance < filteredcars[j].Distance
+	})
+
+	for _, car := range filteredcars {
+		fmt.Printf("car No: %d Plate: %s Distance: %f  lat: %f long: %f\n", car.CarNo, car.CarPlate, car.Distance, car.Latitude, car.Longitude)
+	}
 }
