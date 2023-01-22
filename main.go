@@ -69,6 +69,7 @@ func (w *Watcher) OnCarAvailable(query communautowatcher.CarQuery, cars []commun
 func (w *Watcher) OnFlexCarAvailable(cars []communautowatcher.Car) {
 	fmt.Printf("Found %d cars on Montreal\n\n", len(cars))
 	mtlHomeCoord := haversine.Coord{Lat: 45.540615, Lon: -73.636537}
+	fmt.Printf("From Lat: %f and Long: %f find bellow the closest cars\n", mtlHomeCoord.Lat, mtlHomeCoord.Lon)
 
 	filteredcars := []communautowatcher.Car{}
 	for _, car := range cars {

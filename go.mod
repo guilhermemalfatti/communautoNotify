@@ -2,10 +2,10 @@ module github.com/gmalfatti/communautoNotify
 
 go 1.18
 
-replace github.com/guilhermemalfatti/communautowatcher => ../communautowatcher
+//replace github.com/guilhermemalfatti/communautowatcher => ../communautowatcher
 
 require (
-	github.com/guilhermemalfatti/communautowatcher v1.0.0
+	github.com/guilhermemalfatti/communautowatcher v1.0.2
 	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0
 )
 
