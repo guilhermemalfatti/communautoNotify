@@ -9,14 +9,20 @@ import (
 	"github.com/guilhermemalfatti/communautowatcher"
 	"github.com/umahmood/haversine"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/faiface/beep"
+	"github.com/faiface/beep/generators"
+	"github.com/faiface/beep/speaker"
 )
 
 func main() {
+	// test beep
+	Beep()
 	group, groupCtx := errgroup.WithContext(context.Background())
 
 	group.Go(func() error {
 		communautowatcher.StartWatcher(groupCtx, communautowatcher.WatcherOptions{
-			Interval:              time.Minute * 5,
+			Interval:              time.Second * 30,
 			Watcher:               &Watcher{},
 			IsEnableFetchStations: false,
 			IsEnableFetchFlexCars: true,
@@ -61,6 +67,7 @@ func (w *Watcher) OnCarAvailable(query communautowatcher.CarQuery, cars []commun
 }
 
 func (w *Watcher) OnFlexCarAvailable(cars []communautowatcher.Car) {
+	fmt.Printf("Found %d cars on Montreal\n\n", len(cars))
 	mtlHomeCoord := haversine.Coord{Lat: 45.540615, Lon: -73.636537}
 	fmt.Printf("From Lat: %f and Long: %f find bellow the closest cars\n", mtlHomeCoord.Lat, mtlHomeCoord.Lon)
 
@@ -84,5 +91,32 @@ func (w *Watcher) OnFlexCarAvailable(cars []communautowatcher.Car) {
 
 	for _, car := range filteredcars {
 		fmt.Printf("car No: %d Plate: %s Distance: %f  lat: %f long: %f\n", car.CarNo, car.CarPlate, car.Distance, car.Latitude, car.Longitude)
+
+		Beep()
 	}
+}
+
+func Beep() {
+	sr := beep.SampleRate(48000)
+	speaker.Init(sr, 4800)
+
+	sine2, err := generators.SinTone(sr, 5500)
+	if err != nil {
+		panic(err)
+	}
+
+	time := sr.N(80 * time.Millisecond)
+
+	ch := make(chan struct{})
+	sounds := []beep.Streamer{
+		beep.Take(time, sine2),
+		beep.Take(time, sine2),
+		beep.Take(time, sine2),
+		beep.Callback(func() {
+			ch <- struct{}{}
+		}),
+	}
+	speaker.Play(beep.Seq(sounds...))
+
+	<-ch
 }
