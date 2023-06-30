@@ -3,20 +3,23 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/guilhermemalfatti/communautowatcher"
+	"github.com/hajimehoshi/oto"
+	"github.com/tosone/minimp3"
 	"github.com/umahmood/haversine"
 	"golang.org/x/sync/errgroup"
-
-	"github.com/faiface/beep"
-	"github.com/faiface/beep/generators"
-	"github.com/faiface/beep/speaker"
 )
 
+var once sync.Once
+var otoContext *oto.Context
+
 func main() {
-	// test beep
 	Beep()
 	group, groupCtx := errgroup.WithContext(context.Background())
 
@@ -97,26 +100,32 @@ func (w *Watcher) OnFlexCarAvailable(cars []communautowatcher.Car) {
 }
 
 func Beep() {
-	sr := beep.SampleRate(48000)
-	speaker.Init(sr, 4800)
+	var err error
 
-	sine2, err := generators.SinTone(sr, 5500)
-	if err != nil {
-		panic(err)
+	var file []byte
+	if file, err = ioutil.ReadFile("beep-07a.mp3"); err != nil {
+		log.Fatal(err)
 	}
 
-	time := sr.N(80 * time.Millisecond)
-
-	ch := make(chan struct{})
-	sounds := []beep.Streamer{
-		beep.Take(time, sine2),
-		beep.Take(time, sine2),
-		beep.Take(time, sine2),
-		beep.Callback(func() {
-			ch <- struct{}{}
-		}),
+	var dec *minimp3.Decoder
+	var data []byte
+	if dec, data, err = minimp3.DecodeFull(file); err != nil {
+		log.Fatal(err)
 	}
-	speaker.Play(beep.Seq(sounds...))
 
-	<-ch
+	once.Do(func() {
+		if otoContext, err = oto.NewContext(dec.SampleRate, dec.Channels, 2, 1024); err != nil {
+			log.Fatal(err)
+		}
+	})
+
+	var player = otoContext.NewPlayer()
+	player.Write(data)
+
+	<-time.After(time.Second)
+
+	dec.Close()
+	if err = player.Close(); err != nil {
+		log.Fatal(err)
+	}
 }
